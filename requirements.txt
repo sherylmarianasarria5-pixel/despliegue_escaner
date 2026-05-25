@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+ultralytics
+torch
+torchvision
+python-multipart
+opencv-python
+numpy
+pillow
+python-dotenv
+psutil
