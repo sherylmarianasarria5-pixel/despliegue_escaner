@@ -1,11 +1,8 @@
 fastapi
 uvicorn
+python-multipart
 ultralytics
 torch
-torchvision
-python-multipart
-opencv-python
-numpy
+opencv-python-headless
 pillow
-python-dotenv
-psutil
+numpy
