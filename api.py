@@ -6,10 +6,15 @@ import shutil
 import uuid
 import os
 
+# =========================
+# FASTAPI
+# =========================
+
 app = FastAPI()
 
-
-# agregar CORS
+# =========================
+# CORS
+# =========================
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,62 +24,117 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# se Carga modelo YOLO
+# =========================
+# CARGAR MODELO YOLO
+# =========================
 
 model = YOLO("models/best.pt")
 
-
-# Ruta principal
+# =========================
+# RUTA PRINCIPAL
+# =========================
 
 @app.get("/")
 def home():
-    return {"message": "API IA funcionando"}
 
+    return {
+        "message": "API IA funcionando"
+    }
 
-# Predicción IA
+# =========================
+# PREDICCIÓN IA
+# =========================
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
 
-    # Crear carpeta uploads
-    os.makedirs("uploads", exist_ok=True)
+    try:
 
-    # Obtener extensión
-    extension = file.filename.split(".")[-1]
+        # =========================
+        # CREAR CARPETA UPLOADS
+        # =========================
 
-    # Nombre único
-    filename = f"{uuid.uuid4()}.{extension}"
+        os.makedirs("uploads", exist_ok=True)
 
-    # Ruta archivo
-    file_path = f"uploads/{filename}"
+        # =========================
+        # EXTENSIÓN ARCHIVO
+        # =========================
 
-    # Guardar imagen
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        extension = file.filename.split(".")[-1]
 
-    # Predicción YOLO
-    results = model(file_path)
+        # =========================
+        # NOMBRE ÚNICO
+        # =========================
 
-    detections = []
+        filename = f"{uuid.uuid4()}.{extension}"
 
-    # Extraer resultados
-    for r in results:
-        for box in r.boxes:
+        # =========================
+        # RUTA ARCHIVO
+        # =========================
 
-            clase_id = int(box.cls[0])
+        file_path = f"uploads/{filename}"
 
-            confidence = float(box.conf[0])
+        # =========================
+        # GUARDAR IMAGEN
+        # =========================
 
-            class_name = model.names[clase_id]
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
 
-            detections.append({
-                "class": class_name,
-                "confidence": confidence
-            })
+        # =========================
+        # PREDICCIÓN YOLO
+        # =========================
 
-    return {
-        "success": True,
-        "detections": detections
-    }
-    
+        results = model(file_path)
+
+        detections = []
+
+        # =========================
+        # EXTRAER RESULTADOS
+        # =========================
+
+        for r in results:
+
+            for box in r.boxes:
+
+                clase_id = int(box.cls[0])
+
+                confidence = float(box.conf[0])
+
+                class_name = model.names[clase_id]
+
+                detections.append({
+                    "class": class_name,
+                    "confidence": confidence
+                })
+
+        # =========================
+        # VALIDAR SI NO DETECTA
+        # =========================
+
+        if len(detections) == 0:
+
+            return {
+                "success": False,
+                "message": "Esto no es una hoja de café",
+                "detections": []
+            }
+
+        # =========================
+        # RESPUESTA EXITOSA
+        # =========================
+
+        return {
+            "success": True,
+            "message": "Análisis completado",
+            "detections": detections
+        }
+
+    except Exception as e:
+
+        return {
+            "success": False,
+            "message": "Error analizando imagen",
+            "error": str(e)
+        }
+        
