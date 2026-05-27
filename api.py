@@ -103,9 +103,66 @@ async def predict(file: UploadFile = File(...)):
 
                 class_name = model.names[clase_id]
 
+                # =========================
+                # RECOMENDACIONES
+                # =========================
+
+                recommendations = []
+
+                message = ""
+
+                # =========================
+                # ENFERMEDAD ROYA
+                # =========================
+
+                if class_name == "Enfermedad_ROYA":
+
+                    message = "Se detectó roya en la hoja de café"
+
+                    recommendations = [
+                        "Aplicar tratamiento antifúngico",
+                        "Monitorear hojas cercanas",
+                        "Eliminar hojas muy afectadas",
+                        "Reducir exceso de humedad"
+                    ]
+
+                # =========================
+                # HOJA SANA
+                # =========================
+
+                elif class_name == "Hoja_Sana":
+
+                    message = "La hoja analizada se encuentra saludable"
+
+                    recommendations = [
+                        "Mantener monitoreo constante",
+                        "Continuar buenas prácticas agrícolas",
+                        "Revisar hojas semanalmente"
+                    ]
+
+                # =========================
+                # ÁRBOL CAFÉ
+                # =========================
+
+                elif class_name == "arbol_cafe":
+
+                    message = "Se detectó un árbol de café"
+
+                    recommendations = [
+                        "Verificar estado de hojas",
+                        "Controlar humedad del cultivo",
+                        "Realizar inspecciones periódicas"
+                    ]
+
+                # =========================
+                # DETECCIÓN
+                # =========================
+
                 detections.append({
                     "class": class_name,
-                    "confidence": confidence
+                    "confidence": confidence,
+                    "message": message,
+                    "recommendations": recommendations
                 })
 
         # =========================
@@ -137,4 +194,3 @@ async def predict(file: UploadFile = File(...)):
             "message": "Error analizando imagen",
             "error": str(e)
         }
-        
