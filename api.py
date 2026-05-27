@@ -1,21 +1,15 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
-
 import shutil
 import uuid
 import os
-
-# =========================
-# FASTAPI
-# =========================
 
 app = FastAPI()
 
 # =========================
 # CORS
 # =========================
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,170 +21,71 @@ app.add_middleware(
 # =========================
 # CARGAR MODELO YOLO
 # =========================
+model = YOLO("models/best.pt")  # 👈 asegúrate que sea tu modelo entrenado
 
-model = YOLO("models/best.pt")
-
-# =========================
-# RUTA PRINCIPAL
-# =========================
-
-@app.get("/")
-def home():
-
-    return {
-        "message": "API IA funcionando"
-    }
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # =========================
-# PREDICCIÓN IA
+# ENDPOINT PREDICT
 # =========================
-
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
 
-    try:
+    # guardar imagen
+    file_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}.jpg")
 
-        # =========================
-        # CREAR CARPETA UPLOADS
-        # =========================
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
-        os.makedirs("uploads", exist_ok=True)
+    # =========================
+    # PREDICCIÓN
+    # =========================
+    results = model(file_path)
 
-        # =========================
-        # EXTENSIÓN ARCHIVO
-        # =========================
+    detections = []
 
-        extension = file.filename.split(".")[-1]
+    # clases válidas del sistema cafetalero
+    valid_classes = ["Hoja_Sana", "Enfermedad_ROYA", "arbol_cafe"]
 
-        # =========================
-        # NOMBRE ÚNICO
-        # =========================
-
-        filename = f"{uuid.uuid4()}.{extension}"
-
-        # =========================
-        # RUTA ARCHIVO
-        # =========================
-
-        file_path = f"uploads/{filename}"
-
-        # =========================
-        # GUARDAR IMAGEN
-        # =========================
-
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        # =========================
-        # PREDICCIÓN YOLO
-        # =========================
-
-        results = model(file_path)
-
-        detections = []
-
-        # =========================
-        # EXTRAER RESULTADOS
-        # =========================
-
-        for r in results:
-
-            for box in r.boxes:
-
-                clase_id = int(box.cls[0])
-
-                confidence = float(box.conf[0])
-
-                class_name = model.names[clase_id]
-
-                # =========================
-                # RECOMENDACIONES
-                # =========================
-
-                recommendations = []
-
-                message = ""
-
-                # =========================
-                # ENFERMEDAD ROYA
-                # =========================
-
-                if class_name == "Enfermedad_ROYA":
-
-                    message = "Se detectó roya en la hoja de café"
-
-                    recommendations = [
-                        "Aplicar tratamiento antifúngico",
-                        "Monitorear hojas cercanas",
-                        "Eliminar hojas muy afectadas",
-                        "Reducir exceso de humedad"
-                    ]
-
-                # =========================
-                # HOJA SANA
-                # =========================
-
-                elif class_name == "Hoja_Sana":
-
-                    message = "La hoja analizada se encuentra saludable"
-
-                    recommendations = [
-                        "Mantener monitoreo constante",
-                        "Continuar buenas prácticas agrícolas",
-                        "Revisar hojas semanalmente"
-                    ]
-
-                # =========================
-                # ÁRBOL CAFÉ
-                # =========================
-
-                elif class_name == "arbol_cafe":
-
-                    message = "Se detectó un árbol de café"
-
-                    recommendations = [
-                        "Verificar estado de hojas",
-                        "Controlar humedad del cultivo",
-                        "Realizar inspecciones periódicas"
-                    ]
-
-                # =========================
-                # DETECCIÓN
-                # =========================
-
-                detections.append({
-                    "class": class_name,
-                    "confidence": confidence,
-                    "message": message,
-                    "recommendations": recommendations
-                })
-
-        # =========================
-        # VALIDAR SI NO DETECTA
-        # =========================
-
-        if len(detections) == 0:
-
-            return {
-                "success": False,
-                "message": "Esto no es una hoja de café",
-                "detections": []
-            }
-
-        # =========================
-        # RESPUESTA EXITOSA
-        # =========================
-
+    # =========================
+    # CASO 1: no detecta nada
+    # =========================
+    if len(results[0].boxes) == 0:
         return {
-            "success": True,
-            "message": "Análisis completado",
-            "detections": detections
+            "detections": [],
+            "message": "Imagen no válida. Carga otra imagen de hoja de café."
         }
 
-    except Exception as e:
+    # =========================
+    # PROCESAR DETECCIONES
+    # =========================
+    for box in results[0].boxes:
+        cls_id = int(box.cls[0])
+        conf = float(box.conf[0])
+        class_name = model.names[cls_id]
 
+        detections.append({
+            "class": class_name,
+            "confidence": conf
+        })
+
+    # =========================
+    # CASO 2: no es café (fuera de dominio)
+    # =========================
+    is_cafe = any(d["class"] in valid_classes for d in detections)
+
+    if not is_cafe:
         return {
-            "success": False,
-            "message": "Error analizando imagen",
-            "error": str(e)
+            "detections": [],
+            "message": "Imagen no válida. Carga otra imagen de hoja de café."
         }
+
+    # =========================
+    # RESPUESTA FINAL
+    # =========================
+    return {
+        "detections": detections
+    }
+    
+    
