@@ -41,7 +41,7 @@ async def predict(file: UploadFile = File(...)):
     # =========================
     # PREDICCIÓN
     # =========================
-    results = model(file_path)
+    results = model(file_path, conf=0.70)
 
     detections = []
 
