@@ -129,7 +129,8 @@ async def predict(file: UploadFile = File(...)):
                     "Aplicar tratamiento antifúngico",
                     "Monitorear hojas cercanas",
                     "Eliminar hojas muy afectadas",
-                    "Reducir exceso de humedad"
+                    "Reducir exceso de humedad",
+                    "Contacta a un profesional"
                 ]
 
             # =========================
