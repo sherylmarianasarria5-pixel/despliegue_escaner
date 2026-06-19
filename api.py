@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
 import shutil
@@ -30,6 +30,66 @@ UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # =========================
+# VARIEDADES VÁLIDAS
+# =========================
+
+VARIEDADES_VALIDAS = [
+    "Caturra",
+    "Castillo",
+    "Colombia",
+    "Borbón"
+]
+
+# =========================
+# TRATAMIENTOS DE ROYA POR VARIEDAD
+# =========================
+
+TRATAMIENTOS_ROYA = {
+
+    "Caturra": [
+        "Aplicar fungicida sistémico a base de triazoles (ciproconazol)",
+        "Caturra es altamente susceptible a la roya: priorizar control preventivo",
+        "Realizar podas de renovación para reducir densidad foliar",
+        "Aumentar frecuencia de monitoreo a cada 8-10 días",
+        "Contacta a un profesional agrónomo"
+    ],
+
+    "Castillo": [
+        "Aplicar fungicida a base de cobre (oxicloruro de cobre)",
+        "Castillo tiene resistencia genética moderada: reforzar solo en focos activos",
+        "Eliminar hojas con pústulas esporuladas para reducir propagación",
+        "Mantener monitoreo cada 15 días",
+        "Contacta a un profesional agrónomo"
+    ],
+
+    "Colombia": [
+        "Aplicar fungicida preventivo a base de cobre en bajas dosis",
+        "Variedad Colombia es resistente: enfocar en manejo cultural antes que químico",
+        "Mejorar ventilación de las plantas reduciendo sombra excesiva",
+        "Monitorear cada 20 días dado su nivel de resistencia",
+        "Contacta a un profesional agrónomo"
+    ],
+
+    "Borbón": [
+        "Aplicar fungicida sistémico a base de triazoles de forma inmediata",
+        "Borbón es muy susceptible a la roya: actuar con tratamiento curativo urgente",
+        "Eliminar y destruir hojas severamente afectadas fuera del cultivo",
+        "Aumentar frecuencia de monitoreo a cada 7 días",
+        "Contacta a un profesional agrónomo"
+    ],
+
+}
+
+# Recomendaciones genéricas si no se especifica variedad o no es reconocida
+TRATAMIENTO_ROYA_GENERICO = [
+    "Aplicar tratamiento antifúngico",
+    "Monitorear hojas cercanas",
+    "Eliminar hojas muy afectadas",
+    "Reducir exceso de humedad",
+    "Contacta a un profesional"
+]
+
+# =========================
 # ENDPOINT PRINCIPAL
 # =========================
 
@@ -45,9 +105,22 @@ def home():
 # =========================
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+async def predict(file: UploadFile = File(...), variedad: str = Form(None)):
 
     try:
+
+        # =========================
+        # NORMALIZAR VARIEDAD RECIBIDA
+        # =========================
+
+        variedad_normalizada = None
+
+        if variedad:
+
+            for v in VARIEDADES_VALIDAS:
+                if v.lower() == variedad.strip().lower():
+                    variedad_normalizada = v
+                    break
 
         # =========================
         # GUARDAR IMAGEN
@@ -123,15 +196,17 @@ async def predict(file: UploadFile = File(...)):
 
             if class_name == "Enfermedad_ROYA":
 
-                message = "Se detectó roya en la hoja de café."
+                if variedad_normalizada:
 
-                recommendations = [
-                    "Aplicar tratamiento antifúngico",
-                    "Monitorear hojas cercanas",
-                    "Eliminar hojas muy afectadas",
-                    "Reducir exceso de humedad",
-                    "Contacta a un profesional"
-                ]
+                    message = f"Se detectó roya en la hoja de café (variedad {variedad_normalizada})."
+
+                    recommendations = TRATAMIENTOS_ROYA[variedad_normalizada]
+
+                else:
+
+                    message = "Se detectó roya en la hoja de café."
+
+                    recommendations = TRATAMIENTO_ROYA_GENERICO
 
             # =========================
             # HOJA SANA
@@ -169,7 +244,8 @@ async def predict(file: UploadFile = File(...)):
                 "class": class_name,
                 "confidence": conf,
                 "message": message,
-                "recommendations": recommendations
+                "recommendations": recommendations,
+                "variedad": variedad_normalizada
             })
 
         # =========================
