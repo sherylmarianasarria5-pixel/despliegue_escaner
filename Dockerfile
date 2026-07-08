@@ -1,47 +1,19 @@
-# =========================
-# IMAGEN BASE
-# =========================
-
 FROM python:3.11
 
-# =========================
-# DIRECTORIO
-# =========================
-
 WORKDIR /app
-
-# =========================
-# DEPENDENCIAS LINUX
-# =========================
 
 RUN apt-get update && apt-get install -y \
     libgl1 \
     libglib2.0-0
 
-# =========================
-# REQUIREMENTS
-# =========================
-
 COPY requirements.txt .
-
-# =========================
-# INSTALAR PYTHON
-# =========================
 
 RUN pip install --upgrade pip
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# =========================
-# COPIAR PROYECTO
-# =========================
-
 COPY . .
 
-# =========================
-# PUERTO
-# =========================
+EXPOSE $PORT
 
-EXPOSE 8000
-
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD uvicorn api:app --host 0.0.0.0 --port $PORT
